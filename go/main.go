@@ -2,14 +2,23 @@ package main
 
 import (
 	"fmt"
-	//"bufio"
+	//"strconv"
 	"cardooo/core"
 	server "cardooo/core/net"
 	cardooo "cardooo/log"
 	"net"
 )
 
-//module/package name
+type client struct {
+	uid string
+	ip string
+	conn net.Conn
+}
+
+var clients []client
+
+var msgSize int = 1024
+var port string = ":1024"
 
 func main() {
 	cardooo.Print()
@@ -17,8 +26,8 @@ func main() {
 	server.Print()
 
 	// 創建 TCP 監聽器，監聽所有網卡上的 1024 端口
-	listener, _ := net.Listen("tcp", ":1024")
-	println("啟動伺服器...")
+	listener, _ := net.Listen("tcp", port)
+	println("[cardooo][v.0.2] Server Start...")
 
 	for {
 		// 持續監聽客戶端連線
@@ -28,28 +37,89 @@ func main() {
 			continue
 		}
 
-		// 當客戶端連接時，創建一個新的 go 協程處理該客戶端
-		go ClientLogic(conn)
+		newClient := client{
+			conn: conn, 
+			ip: conn.RemoteAddr().String(),
+			uid: "NewClient",
+		}
+		clients = append(clients, newClient)
+		fmt.Println("[newClient]" + newClient.ip)
+		msg := string("Wellcome!NewClient!(" + newClient.ip + ")")
+		newClient.sendToC("0001", "0001", msg)
+
+		go newClient.handleClient()
 	}
 }
 
-func ClientLogic(conn net.Conn) {
-	fmt.Println("Client connected: " + conn.RemoteAddr().String())
-	defer conn.Close()
 
-    // 循環接收客戶端發送的消息
-    for {
-        // 創建一個 1024 字節的緩衝區
-        buf := make([]byte, 1024)
+func (c *client)handleClient() {
+	for {
+		buf := make([]byte, msgSize)
+		_, err := c.conn.Read(buf)
+		if err != nil {
+			fmt.Println("Error reading:", err.Error())
+			break
+		}
 
-        // 從連接中讀取數據，直到客戶端斷開連接為止
-        n, err := conn.Read(buf)
-        if err != nil {
-            fmt.Println(err)
-            return
-        }
+		//fmt.Println("Received message:", msg)
+		c.processMsg(buf)
+	}
 
-        // 將客戶端發送的消息回傳給客戶端
-        conn.Write(buf[:n])
-    }
+	c.conn.Close()
+	c.removeClient()
+}
+
+func (c *client)removeClient() {
+	for i, client := range clients {
+		if client.conn == c.conn {
+			fmt.Println("[removeClient]" + client.conn.RemoteAddr().String())
+			clients = append(clients[:i], clients[i+1:]...)
+			break
+		}
+	}
+}
+
+func (c *client)processMsg(buf []byte) {
+	systemId := string(buf[4:8])
+	apiId := string(buf[8:12])
+	params := string(buf[12:])
+
+	switch apiId {
+	case "0001":
+		//server well come new client~
+	case "0002":
+		c.setUid(systemId, apiId, params)
+	case "0003":
+		msg := fmt.Sprintf("[B-%v-%v]:%v", c.uid, c.ip, params) 
+		broadcastMessage(systemId, apiId, msg)
+	case "9999":
+		c.sendToC(systemId, apiId, params)
+	default:
+		// 將客戶端發送的消息回傳給客戶端
+		c.conn.Write(buf)
+	}
+}
+
+func (c *client)setUid(systemId string, apiId string, params string) {
+	c.uid = params	
+	uid := string(c.uid)
+	msg := fmt.Sprintf("Hello!%s! Set uid finish!", uid) 
+	c.sendToC(systemId, apiId, msg)
+}
+
+func broadcastMessage(systemId string, apiId string, msg string) {	
+	for _, c := range clients {	
+		c.sendToC(systemId, apiId, msg)
+	}
+}
+
+func (c *client)sendToC(systemId string, apiId string, params string) {	
+	msg := fmt.Sprintf("%s%s%s", systemId, apiId, params) 
+	fmt.Println(msg)
+	buf := []byte(msg)
+
+	_, err := c.conn.Write(buf)
+	if err != nil {
+		fmt.Println("Error writing:", err.Error())
+	}
 }
