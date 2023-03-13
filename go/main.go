@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"bytes"
 	//"strconv"
 	"cardooo/core"
 	server "cardooo/core/net"
@@ -80,9 +81,9 @@ func (c *client)removeClient() {
 }
 
 func (c *client)processMsg(buf []byte) {
-	systemId := string(buf[4:8])
-	apiId := string(buf[8:12])
-	params := string(buf[12:])
+	systemId := string(bytes.Trim(buf[4:8], "\x00"))
+	apiId := string(bytes.Trim(buf[8:12], "\x00"))
+	params := string(bytes.Trim(buf[12:], "\x00"))
 
 	switch apiId {
 	case "0001":
@@ -101,9 +102,9 @@ func (c *client)processMsg(buf []byte) {
 }
 
 func (c *client)setUid(systemId string, apiId string, params string) {
-	c.uid = params	
-	uid := string(c.uid)
-	msg := fmt.Sprintf("Hello!%s! Set uid finish!", uid) 
+	c.uid = params
+	fmt.Printf("[setUid]: %s\n", c.uid)
+	msg := fmt.Sprintf("Hello! %s! Set uid finish!", c.uid)
 	c.sendToC(systemId, apiId, msg)
 }
 
@@ -114,10 +115,9 @@ func broadcastMessage(systemId string, apiId string, msg string) {
 }
 
 func (c *client)sendToC(systemId string, apiId string, params string) {	
-	msg := fmt.Sprintf("%s%s%s", systemId, apiId, params) 
-	fmt.Println(msg)
+	msg := fmt.Sprintf("%s%s%s", systemId, apiId, params)
 	buf := []byte(msg)
-
+	//fmt.Println(msg)
 	_, err := c.conn.Write(buf)
 	if err != nil {
 		fmt.Println("Error writing:", err.Error())

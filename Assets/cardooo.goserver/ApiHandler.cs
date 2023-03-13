@@ -5,18 +5,10 @@ namespace cardooo.goserver
     public class ApiHandler
     {
         static ApiHandler inst;
-        public static ApiHandler Inst {
-            get {
-                if (inst == null)
-                {
-                    inst = new ApiHandler();
-                }
-                return inst;
-            }
-        }
+        public static ApiHandler Inst => inst ??= new ApiHandler();
 
+        Queue<ResponsePack> responseQueue = new Queue<ResponsePack>();
         Dictionary<int, ApiEndpoint> apiDic = new Dictionary<int, ApiEndpoint>();
-
         public void addApi(int apiId, ApiEndpoint apiEndpoint)
         {
             if (apiDic.ContainsKey(apiId))
@@ -24,14 +16,24 @@ namespace cardooo.goserver
             apiDic.Add(apiId, apiEndpoint);
         }
 
-        public void Response(int systemId, int apiId, string param, Action<string> error = null)
+        public void AddResponsePack(int systemId, int apiId, string param, Action<string> error = null)
         {
-            if (!apiDic.TryGetValue(apiId, out var apiEndpoint))
+            responseQueue.Enqueue(new ResponsePack() { systemId = systemId, apiId = apiId, param = param });
+        }
+
+        public void ProcessRespone(Action<string> error = null)
+        {
+            if (responseQueue.Count == 0)
             {
-                error?.Invoke($"[{apiId}] can not find api~");
                 return;
             }
-            apiEndpoint.Excute(param, error);
+            var pack = responseQueue.Dequeue();
+            if (!apiDic.TryGetValue(pack.apiId, out var apiEndpoint))
+            {
+                error?.Invoke($"[{pack.apiId}] can not find api~");
+                return;
+            }
+            apiEndpoint.Excute(pack.param, error);
         }
     }
 }
