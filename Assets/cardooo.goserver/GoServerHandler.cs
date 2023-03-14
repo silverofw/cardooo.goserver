@@ -17,9 +17,13 @@ namespace cardooo.goserver
         private NetworkStream stream;
         private Thread thread;
 
-
         public void JoinServer(string ip, int port, Action<string> error = null)
         {
+            if (client != null && client.Connected)
+            {
+                return;
+            }
+
             serverIp = ip;
             serverPort = port;
 
