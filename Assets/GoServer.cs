@@ -5,6 +5,7 @@ public class GoServerTest : MonoBehaviour
 {
     public string serverIp = "127.0.0.1";
     public int serverPort = 8000;
+    public bool nonThread = false;
 
     public int uid;
     public int systemIndex;
@@ -13,8 +14,14 @@ public class GoServerTest : MonoBehaviour
 
     void Start()
     {
-        GoServerHandler.Inst.JoinServer(serverIp, serverPort);
-
+        if (!nonThread)
+        {
+            GoServerHandler.Inst.JoinServer(serverIp, serverPort);
+        }
+        else
+        {
+            GoServerHandler.Inst.JoinServerNonThread(serverIp, serverPort);
+        }
         ApiHandler.Inst.addApi(1, new ApiEndpointLog());
         ApiHandler.Inst.addApi(2, new ApiEndpointLog());
         ApiHandler.Inst.addApi(3, new ApiEndpointBoardcast());
@@ -22,7 +29,7 @@ public class GoServerTest : MonoBehaviour
 
     private void Update()
     {
-        ApiHandler.Inst.ProcessRespone((error) => { 
+        GoServerHandler.Inst.updateStream((error) => {
             Debug.Log(error);
         });
     }
