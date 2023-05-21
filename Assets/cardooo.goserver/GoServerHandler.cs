@@ -21,6 +21,8 @@ namespace cardooo.goserver
         private NetworkStream stream;
         private Thread thread;
 
+        string getStream = "";
+
         public void JoinServer(string ip, int port, Action<string> error = null)
         {
             if (client != null && client.Connected)
@@ -98,12 +100,36 @@ namespace cardooo.goserver
             {
                 byte[] data = new byte[packSize];
                 int bytes = stream.Read(data, 0, data.Length);
+                getStream += Encoding.ASCII.GetString(data);
 
+                string[] strs = getStream.Split("[<]");
+                int index = 1;
+                while (strs.Length > index)
+                {
+                    bool isFinish = strs[index].Contains("[>]");
+                    if (isFinish)
+                    {
+                        // 完整封包
+                        string systemId = strs[index].Substring(0, 4);
+                        string apiId = strs[index].Substring(4, 4);
+                        string param = strs[index].Substring(8, strs[index].Length - (3 + 8));
+                        ApiHandler.Inst.AddResponsePack(int.Parse(systemId), int.Parse(apiId), param);
+                        index++;
+                    }
+                    else
+                    {
+                        //封包不完整,繼續監聽
+                        getStream = strs[index];
+                    }
+                }
+
+                getStream = "";
+                /*
                 string systemId = Encoding.ASCII.GetString(data, 0, 4);
                 string apiId = Encoding.ASCII.GetString(data, 4, 4);
                 string param = Encoding.ASCII.GetString(data, 8, bytes - 8);
+                */
 
-                ApiHandler.Inst.AddResponsePack(int.Parse(systemId), int.Parse(apiId), param);
             }
         }
 

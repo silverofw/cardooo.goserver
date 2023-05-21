@@ -1,6 +1,8 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // fun大寫代表public(才能夠被存取)
 func Print() {
