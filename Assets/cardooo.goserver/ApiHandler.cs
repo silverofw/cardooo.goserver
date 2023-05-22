@@ -30,7 +30,7 @@ namespace cardooo.goserver
             var pack = responseQueue.Dequeue();
             if (!apiDic.TryGetValue(pack.apiId, out var apiEndpoint))
             {
-                error?.Invoke($"[{pack.apiId}] can not find api~");
+                error?.Invoke($"[{pack.apiId}][{pack.param}] can not find api~");
                 return;
             }
             apiEndpoint.Excute(pack.param, error);

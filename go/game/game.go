@@ -18,14 +18,14 @@ type Game struct {
 
 type Agent struct
 {
-	id int
-	pos Pos
-	frame int
+	Id int
+	Pos Pos
+	Frame int
 }
 
 type Pos struct {
-	x int
-	y int
+	X int
+	Y int
 }
 
 func InitGame() Game{
@@ -60,7 +60,7 @@ func (g *Game)HandleGame() {
 			fmt.Printf("[Game][%v][%v:%v:%v]%s\n", g.frame, hour, minute, secend, dt.String())
 		}
 		for _,v := range g.AgentMap {
-			v.frame++
+			v.Frame++
 		}		
 
 		time.Sleep(1000*1000*1000)
@@ -74,24 +74,24 @@ func (g *Game)AddNewAgent(id int) {
 	}
 
 	newAgent := Agent{
-		id: id,
-		pos: Pos{
-			x: 2,
-			y: 2,
+		Id: id,
+		Pos: Pos{
+			X: 2,
+			Y: 2,
 		},
-		frame: 0,
+		Frame: 0,
 	}
 	g.AgentMap[id] = newAgent
 	info := fmt.Sprintf("[Game][AddNewAgent] id: %v",id)
 	fmt.Println(info)
 	if g.SendMsg != nil {
 		g.SendMsg(0, 1, 3, info)
-		info = fmt.Sprintf("%v,%v,%v",newAgent.id,newAgent.pos.x,newAgent.pos.y)
+		info = fmt.Sprintf("%v,%v,%v",newAgent.Id,newAgent.Pos.X,newAgent.Pos.Y)
 		g.SendMsg(id, 1, 10, info)
 	}
 }
 func (g *Game)RemoveAgent(id int) {
-	fmt.Printf("[Game][RemoveAgent] id: %v, frame: %v\n",id,g.AgentMap[id].frame)
+	fmt.Printf("[Game][RemoveAgent] id: %v, frame: %v\n",id,g.AgentMap[id].Frame)
 	delete(g.AgentMap, id)
 }
 

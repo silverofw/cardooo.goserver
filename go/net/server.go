@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"bytes"
+	"strconv"
 )
 
 type client struct {
@@ -22,9 +23,9 @@ var port string = ":1024"
 
 var newClient func(int)
 var delClient func(int)
-var clientCommand func(string, string, string, string) 
+var clientCommand func(int, int, int, string) 
 
-func StartTCP(newC func(int), delC func(int), clientC func(string, string, string, string)){
+func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string)){
 	newClient = newC
 	delClient = delC
 	clientCommand = clientC
@@ -88,23 +89,33 @@ func (c *client)removeClient() {
 }
 
 func (c *client)processMsg(buf []byte) {
-	uid := string(bytes.Trim(buf[0:4], "\x00"))
-	systemId := string(bytes.Trim(buf[4:8], "\x00"))
-	apiId := string(bytes.Trim(buf[8:12], "\x00"))
+	idStr := string(bytes.Trim(buf[0:4], "\x00"))
+	systemStr := string(bytes.Trim(buf[4:8], "\x00"))
+	apiStr := string(bytes.Trim(buf[8:12], "\x00"))
 	params := string(bytes.Trim(buf[12:], "\x00"))
 
-	switch apiId {
-	case "0002":
-		c.setUid(systemId, apiId, params)
-	case "0003":
+	id, _ := strconv.Atoi(idStr) // string >> int
+	sys, _ := strconv.Atoi(systemStr) // string >> int
+	api, _ := strconv.Atoi(apiStr) // string >> int
+
+	_, ok := clients[id]
+	if !ok {
+		fmt.Printf("[ERROR][SERVER][%v,%v,%v] wrong id!\n",id,sys,api)
+		return
+	}
+
+	switch api {
+	case 2:
+		c.setUid(systemStr, apiStr, params)
+	case 3:
 		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params) 
-		BroadcastMessage(systemId, apiId, msg)
-	case "9999":
-		c.sendToC(systemId, apiId, params)
+		BroadcastMessage(sys, api, msg)
+	case 9999:
+		c.sendToC(systemStr, apiStr, params)
 	default:
 		// 將客戶端發送的消息回傳給客戶端
 		c.conn.Write(buf)
-		clientCommand(uid, systemId, apiId, params)
+		clientCommand(id, sys, api, params)
 	}
 }
 
@@ -115,20 +126,22 @@ func (c *client)setUid(systemId string, apiId string, params string) {
 	c.sendToC(systemId, apiId, msg)
 }
 
-func BroadcastMessage(systemId string, apiId string, msg string) {	
+func BroadcastMessage(sys int, api int, msg string) {	
+	systemId := fmt.Sprintf("%04d",sys)
+	apiId := fmt.Sprintf("%04d",api)
 	for _, c := range clients {	
 		c.sendToC(systemId, apiId, msg)
 	}
 }
 
-func SendMsg(id int, systemId int, apiId int, params string) {	
-	sys := fmt.Sprintf("%04d",systemId)
-	api := fmt.Sprintf("%04d",apiId)
+func SendMsg(id int, sys int, api int, msg string) {	
 	if id != 0 {
 		c := clients[id]
-		c.sendToC(sys, api, params)
+		systemId := fmt.Sprintf("%04d",sys)
+		apiId := fmt.Sprintf("%04d",api)
+		c.sendToC(systemId, apiId, msg)
 	} else {
-		BroadcastMessage(sys, api, params)
+		BroadcastMessage(sys, api, msg)
 	}
 }
 

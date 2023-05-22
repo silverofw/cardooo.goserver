@@ -12,6 +12,13 @@ namespace cardooo.goserver
         public string serverIp { get; private set; } = "127.0.0.1";
         public int serverPort { get; private set; } = 8000;
         public int packSize { get; private set; } = 1024;
+        public bool IsConnected { get {
+                if (client != null && client.Connected)
+                    return true;
+                return false;
+            }
+        }
+
         /// <summary>
         /// use thread update or not
         /// </summary>
@@ -23,12 +30,15 @@ namespace cardooo.goserver
 
         string getStream = "";
 
+        Action<string> error;
+
         public void JoinServer(string ip, int port, Action<string> error = null)
         {
             if (client != null && client.Connected)
             {
                 return;
             }
+            this.error = error;
 
             serverIp = ip;
             serverPort = port;
@@ -49,7 +59,7 @@ namespace cardooo.goserver
             catch (Exception e)
             {
                 error?.Invoke("Error: " + e.Message);
-            }            
+            }
         }
 
 
@@ -59,6 +69,7 @@ namespace cardooo.goserver
             {
                 return;
             }
+            this.error = error;
 
             serverIp = ip;
             serverPort = port;
@@ -81,6 +92,7 @@ namespace cardooo.goserver
             {
                 onSteamDataAvailable();
             }
+            error("Server ShutDown!");
         }
 
         public void updateStream(Action<string> error = null)
@@ -112,7 +124,8 @@ namespace cardooo.goserver
                         // 完整封包
                         string systemId = strs[index].Substring(0, 4);
                         string apiId = strs[index].Substring(4, 4);
-                        string param = strs[index].Substring(8, strs[index].Length - (3 + 8));
+                        string param = strs[index].Substring(8, strs[index].Length - 8);
+                        param = param.Split("[>]")[0];
                         ApiHandler.Inst.AddResponsePack(int.Parse(systemId), int.Parse(apiId), param);
                         index++;
                     }
@@ -124,12 +137,6 @@ namespace cardooo.goserver
                 }
 
                 getStream = "";
-                /*
-                string systemId = Encoding.ASCII.GetString(data, 0, 4);
-                string apiId = Encoding.ASCII.GetString(data, 4, 4);
-                string param = Encoding.ASCII.GetString(data, 8, bytes - 8);
-                */
-
             }
         }
 
@@ -139,8 +146,16 @@ namespace cardooo.goserver
             stream.Write(data, 0, data.Length);
         }
 
+        public void ServerShutDown()
+        {
+            if (error != null)
+                error("Server ShutDown!");
+            LeaveServer();
+        }
+
         public void LeaveServer()
         {
+            error = null;
             if (thread != null)
             {
                 thread.Abort();

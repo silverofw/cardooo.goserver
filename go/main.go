@@ -29,13 +29,18 @@ func RemoveAgent(id int) {
 	mainGame.RemoveAgent(id)
 }
 
-func ClientCommand(uid string, systemId string, apiId string, msg string) {
-	fmt.Printf("[Cardooo][ClientCommand] %s,%s,%s,%s\n", uid, systemId, apiId, msg)
+func ClientCommand(id int, sys int, api int, msg string) {
+	fmt.Printf("[Cardooo][ClientCommand] %v,%v,%v,%s\n", id, sys, api, msg)
 
-	switch apiId {
-	case "0010"://取得服務器GAME狀態
-	case "0011"://角色移動
-	case "0012"://角色行為
+	switch api {
+	case 10://取得服務器GAME狀態
+		sendMsg := ""
+		for k, v := range mainGame.AgentMap {
+			sendMsg += fmt.Sprintf("%v,%v,%v|", k, v.Pos.X, v.Pos.Y)
+		}
+		server.SendMsg(id, sys, api, sendMsg)
+	case 11://角色移動
+	case 12://角色行為
 	default:
 		
 	}
