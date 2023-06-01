@@ -16,7 +16,7 @@ type client struct {
 	isConn bool
 }
 
-var token int = 0
+var token int = 1000
 var clients map[int]client
 var msgSize int = 1024
 var port string = ":1024"
@@ -109,7 +109,7 @@ func (c *client)processMsg(buf []byte) {
 		c.setUid(systemStr, apiStr, params)
 	case 3:
 		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params) 
-		BroadcastMessage(sys, api, msg)
+		BroadcastMessage(-1, sys, api, msg)
 	case 9999:
 		c.sendToC(systemStr, apiStr, params)
 	default:
@@ -126,23 +126,21 @@ func (c *client)setUid(systemId string, apiId string, params string) {
 	c.sendToC(systemId, apiId, msg)
 }
 
-func BroadcastMessage(sys int, api int, msg string) {	
+func BroadcastMessage(id int,sys int, api int, msg string) {	
 	systemId := fmt.Sprintf("%04d",sys)
 	apiId := fmt.Sprintf("%04d",api)
 	for _, c := range clients {	
-		c.sendToC(systemId, apiId, msg)
+		if c.id != id {
+			c.sendToC(systemId, apiId, msg)
+		}
 	}
 }
 
 func SendMsg(id int, sys int, api int, msg string) {	
-	if id != 0 {
-		c := clients[id]
-		systemId := fmt.Sprintf("%04d",sys)
-		apiId := fmt.Sprintf("%04d",api)
-		c.sendToC(systemId, apiId, msg)
-	} else {
-		BroadcastMessage(sys, api, msg)
-	}
+	c := clients[id]
+	systemId := fmt.Sprintf("%04d",sys)
+	apiId := fmt.Sprintf("%04d",api)
+	c.sendToC(systemId, apiId, msg)
 }
 
 func (c *client)sendToC(systemId string, apiId string, params string) {	
