@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 	"math/rand"
+	"cardooo/core"
+	"cardooo/enum"
 )
 
 type Game struct {
@@ -29,7 +31,9 @@ type Agent struct
 	Face int
 	Pos Pos
 	MapId int
-	Frame int	
+	Frame int
+	Pixel int
+	Team int
 }
 
 type Pos struct {
@@ -56,7 +60,20 @@ func (a *Agent)Behit(damage int){
 	a.Hp -= damage
 }
 
-func InitGame(SendMsg func(int, int, int, string),SendBroadcastMsg func(int, int, int, string)) Game{
+func InitBattleGame() Game{
+	g := Game{
+		Uid: 7777,
+		name: "PixelMonWorld",
+		frame: 0,
+		token: 0,
+		autoCd: 3,
+		MapId: 7007,
+		AgentMap: make(map[int]*Agent),
+	}	
+	return g
+}
+
+func InitLobyGame(SendMsg func(int, int, int, string),SendBroadcastMsg func(int, int, int, string)) Game{
 	g := Game{
 		Uid: 7777,
 		name: "PixelMonWorld",
@@ -68,13 +85,11 @@ func InitGame(SendMsg func(int, int, int, string),SendBroadcastMsg func(int, int
 		SendMsg: SendMsg,
 		SendBroadcastMsg: SendBroadcastMsg,
 	}
-
-	go  g.HandleGame()
-
+	go g.LobyMode()
 	return g
 }
 
-func (g *Game)HandleGame() {
+func (g *Game)LobyMode() {
 	dt := time.Now()
 	fmt.Println("[Game] Start!", dt.String())
 
@@ -103,16 +118,16 @@ func (g *Game)AutoAgentCreator() {
 	}
 
 	g.autoCd = 10
-	if len(g.AgentMap) < 6 {
+	if len(g.AgentMap) < 3 {
 		fmt.Printf("[Game][AutoAgentCreator][%v] auto create new agent! \n", len(g.AgentMap))
 		g.agentToken++;
-		a := g.AddNewAgent(g.agentToken)		
+		a := g.AddNewAgentById(g.agentToken)		
 		info := fmt.Sprintf("%v,%v,%v",a.Id, a.Pos.X, a.Pos.Y)
 		g.SendBroadcastMsg(0, 1, 1101, info)
 	}
 }
 
-func (g *Game)AddNewAgent(id int) *Agent{		
+func (g *Game)AddNewAgentById(id int) *Agent{		
 	_, ok := g.AgentMap[id]
 	if ok {
 		fmt.Printf("[Game]have same id %v\n",id)
@@ -132,39 +147,60 @@ func (g *Game)AddNewAgent(id int) *Agent{
 	}
 	g.AgentMap[id] = newAgent
 	
-	info := fmt.Sprintf("[Game][AddNewAgent] id: %v",id)
-	fmt.Println(info)
+	fmt.Printf("[Game][AddNewAgent] id: %v\n", id)
 	return g.AgentMap[id]
 }
+func (g *Game)AddNewAgent(agent Agent) *Agent{		
+	_, ok := g.AgentMap[agent.Id]
+	if ok {
+		fmt.Printf("[Game]have same id %v\n",agent.Id)
+		return g.AgentMap[agent.Id]
+	}
+
+	g.AgentMap[agent.Id] = &agent
+		
+	fmt.Printf("[Game][AddNewAgent] id: %v\n",agent.Id)
+	return &agent
+}
+
 func (g *Game)RemoveAgent(id int) {
 	fmt.Printf("[Game][RemoveAgent] id: %v, frame: %v\n", id, g.AgentMap[id].Frame)
 	delete(g.AgentMap, id)
 }
+
+func (g *Game)GetTarget(id int) *Agent{
+	curAgent := g.AgentMap[id]
+	if curAgent == nil {
+		return nil
+	}
+	return g.getNearestAgent(curAgent)
+}
+
 func (g *Game)OnOrder(id int, order int) {
 	fmt.Printf("[Game][OnOrder] id: %v, order: %v\n", id, order)
 	switch order{
-	case 8001:
+	case MainEvent.ORDER_MOVE_UP:
 		g.AgentMap[id].Face = 0
 		var checkPos = g.AgentMap[id].Pos.Add(facePos[0])
 		if CheckCanPass(checkPos) && g.getAgent(checkPos) == nil {
 			g.AgentMap[id].AddPos(0,1)
 			fmt.Printf("[Game][OnOrder][8001] x: %v, y: %v\n", g.AgentMap[id].Pos.X, g.AgentMap[id].Pos.Y)
 		}
-	case 8002:
+	case MainEvent.ORDER_MOVE_DOWN:
 		g.AgentMap[id].Face = 1
 		var checkPos = g.AgentMap[id].Pos.Add(facePos[1])
 		if CheckCanPass(checkPos) && g.getAgent(checkPos) == nil {
 			g.AgentMap[id].AddPos(0,-1)
 			fmt.Printf("[Game][OnOrder][8002] x: %v, y: %v\n", g.AgentMap[id].Pos.X, g.AgentMap[id].Pos.Y)
 		}
-	case 8003:
+	case MainEvent.ORDER_MOVE_LEFT:
 		g.AgentMap[id].Face = 2
 		var checkPos = g.AgentMap[id].Pos.Add(facePos[2])
 		if CheckCanPass(checkPos) && g.getAgent(checkPos) == nil {
 			g.AgentMap[id].AddPos(-1,0)
 			fmt.Printf("[Game][OnOrder][8003] x: %v, y: %v\n", g.AgentMap[id].Pos.X, g.AgentMap[id].Pos.Y)
 		}
-	case 8004:
+	case MainEvent.ORDER_MOVE_RIGHT:
 		g.AgentMap[id].Face = 3
 		var checkPos = g.AgentMap[id].Pos.Add(facePos[3])
 		if CheckCanPass(checkPos) && g.getAgent(checkPos) == nil {
@@ -178,10 +214,12 @@ func (g *Game)OnOrder(id int, order int) {
 			return
 		}
 		a.Behit(1)
-		fmt.Printf("[Game][OnOrder][8009] Hp: %v\n", a.Hp)
+		fmt.Printf("[Game][OnOrder][8009]id:%v ,Hp: %v\n", a.Id, a.Hp)
 		if a.Hp <= 0 {
-			sendMsg := fmt.Sprintf("%v,%v,%v|", a.Id, a.Pos.X, a.Pos.Y)	
-			g.SendBroadcastMsg(0, 1, 1102, sendMsg)
+			sendMsg := fmt.Sprintf("%v,%v,%v|", a.Id, a.Pos.X, a.Pos.Y)
+			if g.SendBroadcastMsg != nil {
+				g.SendBroadcastMsg(0, 1, 1102, sendMsg)
+			}
 			g.RemoveAgent(a.Id)
 		}
 	}
@@ -196,10 +234,76 @@ func (g *Game)getAgent(pos Pos) *Agent {
 	return nil
 }
 
+func (g *Game)getNearestAgent(agent *Agent) *Agent {
+	var target *Agent
+	minDis := 99999
+	for _,v := range g.AgentMap {
+		if v.Team != agent.Team && v.Id != agent.Id {
+			dis := agent.Pos.Dis(v.Pos)
+			if minDis > dis {
+				minDis = dis
+				target = v
+			}
+		}
+	}	
+	return target
+}
+
 func (p Pos)Add(pos Pos) Pos {
 	p.X += pos.X
 	p.Y += pos.Y
 	return p
+}
+
+func (p Pos)Dis(target Pos) int {
+	dis := 0
+	dis += Math.Abs(target.X - p.X)
+	dis += Math.Abs(target.Y - p.Y)
+	return dis
+}
+func (a Agent)GetOrder(target *Agent) int {
+	delX := Math.Abs(target.Pos.X - a.Pos.X)
+	delY := Math.Abs(target.Pos.Y - a.Pos.Y)
+	if a.Pos.Dis(target.Pos) == 1 {
+		if delX > delY {
+			if target.Pos.X > a.Pos.X {
+				if a.Face != 3 {
+					return MainEvent.ORDER_MOVE_RIGHT
+				} else {
+					return MainEvent.ORDER_ATTACK
+				}
+			}
+			if a.Face != 2 {
+				return MainEvent.ORDER_MOVE_LEFT
+			} else {
+				return MainEvent.ORDER_ATTACK
+			}
+		} else {
+			if target.Pos.Y > a.Pos.Y {
+				if a.Face != 0 {
+					return MainEvent.ORDER_MOVE_UP
+				} else {
+					return MainEvent.ORDER_ATTACK
+				}		
+			}			
+			if a.Face != 1 {
+				return MainEvent.ORDER_MOVE_DOWN
+			} else {
+				return MainEvent.ORDER_ATTACK
+			}
+		}		
+	}
+	if delX > delY {
+		if target.Pos.X > a.Pos.X {
+			return MainEvent.ORDER_MOVE_RIGHT
+		}
+		return MainEvent.ORDER_MOVE_LEFT
+	} else {
+		if target.Pos.Y > a.Pos.Y {
+			return MainEvent.ORDER_MOVE_UP
+		}
+		return MainEvent.ORDER_MOVE_DOWN
+	}
 }
 
 func CheckCanPass(pos Pos) bool {
@@ -208,5 +312,20 @@ func CheckCanPass(pos Pos) bool {
 			return false
 		}
 	}
+	return true
+}
+
+func (g *Game)GameEnd()bool {
+	team := -1
+	for _,a := range g.AgentMap {
+		if team == -1{
+			team = a.Team
+			continue			
+		}
+		if team != a.Team {
+			return false
+		}
+	}
+
 	return true
 }

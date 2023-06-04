@@ -5,16 +5,21 @@ import (
 	"strings"
 	"strconv"
 	"time"
+	"cardooo/enum"
 	game "cardooo/game"
 	server "cardooo/net"
+	battle "cardooo/battle"
 )
 
 var mainGame game.Game
+var mainBattle battle.Battle
 
 func main() {	
 
-	mainGame = game.InitGame(server.SendMsg, server.BroadcastMessage)
+	mainGame = game.InitLobyGame(server.SendMsg, server.BroadcastMessage)	
+
 	go server.StartTCP(AddNewAgent, RemoveAgent, ClientCommand)
+	mainBattle = battle.InitBattle()	
 
 	fmt.Println("[Cardooo] Server Start...")
 	for {
@@ -23,9 +28,9 @@ func main() {
 }
 
 func AddNewAgent(id int) {
-	a := mainGame.AddNewAgent(id)
+	a := mainGame.AddNewAgentById(id)
 	info := fmt.Sprintf("%v,%v,%v,%v",a.Id, a.MapId, a.Pos.X, a.Pos.Y)
-	server.SendMsg(id, 1, 10, info)
+	server.SendMsg(id, 1, MainEvent.CSC_PLAYER_STATE, info)
 	ServerCommand(id, 1, 1001, "")
 }
 
@@ -43,38 +48,41 @@ func ServerCommand(id int, sys int, api int, msg string) {
 			sendMsg := fmt.Sprintf("%v,%v,%v|", id, v.Pos.X, v.Pos.Y)	
 			server.BroadcastMessage(id, sys, api, sendMsg)
 		case 1002:// [S>C] 玩家離開
-			v := mainGame.AgentMap[id]		
-			sendMsg := fmt.Sprintf("%v,%v,%v|", id, v.Pos.X, v.Pos.Y)	
-			server.BroadcastMessage(id, sys, api, sendMsg)						
+			v := mainGame.AgentMap[id]
+			if v != nil {
+				sendMsg := fmt.Sprintf("%v,%v,%v|", id, v.Pos.X, v.Pos.Y)	
+				server.BroadcastMessage(id, sys, api, sendMsg)
+			}else{
+				fmt.Printf("[ERROR][MAIN] agent is missing! id:%v \n", id)
+			}
 		default:	
 	}
 }
 
 func ClientCommand(id int, sys int, api int, msg string) {
-	fmt.Printf("[Cardooo][ClientCommand] %v,%v,%v,%s\n", id, sys, api, msg)
+	fmt.Printf("[Cardooo][ClientCommand] %v,%v,%v,%s\n", id, sys, api, msg)	
 
 	switch api {
-	case 10://取得玩家狀態
+	case MainEvent.CSC_PLAYER_STATE://取得玩家狀態
 		v := mainGame.AgentMap[id]		
 		sendMsg := fmt.Sprintf("%v,%v,%v|", id, v.Pos.X, v.Pos.Y)		
 		server.SendMsg(id, sys, api, sendMsg)
 
-	case 11://取得服務器GAME狀態
+	case MainEvent.CSC_GAME_STATE://取得服務器GAME狀態
 		sendMsg := ""
 		sendMsg += fmt.Sprintf("1000,%v|",mainGame.MapId)
 		for k, v := range mainGame.AgentMap {
 			sendMsg += fmt.Sprintf("%v,%v,%v,%v|", k, v.MapId, v.Pos.X, v.Pos.Y)
 		}
 		server.SendMsg(id, sys, api, sendMsg)
-	case 12://玩家order
+	case MainEvent.CSC_PLAYER_ORDER://玩家order
 		server.BroadcastMessage(id, sys, api, msg)
 		orderStr := strings.Split(msg, ",") // >> id,order
 		order, _ := strconv.Atoi(orderStr[1]) // string >> int
 		mainGame.OnOrder(id, order)
 	case 100://戰報
-		sendMsg := ""
-		sendMsg += fmt.Sprintf("WORKING")
-		fmt.Println(sendMsg)
+		sendMsg := mainBattle.Report(id)
+		fmt.Println("[BATTLE REPORT]: " + sendMsg)
 		server.SendMsg(id, sys, api, sendMsg)
 	default:
 		
