@@ -1,10 +1,10 @@
 package MainEvent
 
-const(
+const (
 	CSC_PLAYER_STATE = 10
-	CSC_GAME_STATE = 11
+	CSC_GAME_STATE   = 11
 	CSC_PLAYER_ORDER = 12
-
+	
 	CSC_BATTLE_REPORT = 100
     CSC_BATTLE_UPDATE_TEAM = 101
 

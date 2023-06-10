@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"time"
 	"cardooo/enum"
-	game "cardooo/game"
-	server "cardooo/net"
-	battle "cardooo/battle"
+	"cardooo/model"
+	"cardooo/game"
+	"cardooo/net"
+	"cardooo/battle"
 )
 
 var mainGame game.Game
@@ -86,7 +87,7 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		server.SendMsg(id, sys, api, sendMsg)
 	case MainEvent.CSC_BATTLE_UPDATE_TEAM://更新隊伍
 		agentsStr := strings.Split(msg, "|")
-		agents := []game.Agent{}
+		agents := []model.Agent{}
 		for _,v := range agentsStr {
 			fmt.Printf("[BATTLE] UPATE PLAYER TEAM :%v \n", v)
 			if v== "" {
@@ -98,9 +99,9 @@ func ClientCommand(id int, sys int, api int, msg string) {
 			y, _ := strconv.Atoi(agentStr[2])
 
 			xOffset := 2
-			agent := game.Agent{
+			agent := model.Agent{
 				Pixel: pixel, MapId: 0, Hp: 10, Face: 0, 
-				Pos: game.Pos{ X: x + xOffset, Y: y, },
+				Pos: model.Vector2{ X: x + xOffset, Y: y, },
 			}
 			agents = append(agents, agent)
 		}

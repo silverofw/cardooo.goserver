@@ -1,19 +1,22 @@
 package server
 
 import (
+	"bytes"
+	"cardooo/model"
 	"fmt"
 	"net"
-	"bytes"
 	"strconv"
 )
 
 type client struct {
-	id int
-	name string
-	ip string
-	frame int
-	conn net.Conn
+	id     int
+	name   string
+	ip     string
+	frame  int
+	conn   net.Conn
 	isConn bool
+
+	Items []model.Item
 }
 
 var token int = 1000
@@ -23,9 +26,9 @@ var port string = ":1024"
 
 var newClient func(int)
 var delClient func(int)
-var clientCommand func(int, int, int, string) 
+var clientCommand func(int, int, int, string)
 
-func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string)){
+func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string)) {
 	newClient = newC
 	delClient = delC
 	clientCommand = clientC
@@ -37,32 +40,31 @@ func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string
 	for {
 		// 持續監聽客戶端連線
 		conn, err := listener.Accept()
-		if err != nil{
+		if err != nil {
 			println(err)
 			continue
 		}
-		
+
 		token++
 		newClient := client{
-			id: token,
-			conn: conn, 
-			ip: conn.RemoteAddr().String(),
-			frame: 0,
-			name: "NewClient",
+			id:     token,
+			conn:   conn,
+			ip:     conn.RemoteAddr().String(),
+			frame:  0,
+			name:   "NewClient",
 			isConn: true,
 		}
 		clients[newClient.id] = newClient
 		msg := fmt.Sprintf("[Server][%v]Wellcome!NewClient!(%s)", newClient.id, newClient.ip)
 		fmt.Println(msg)
-		//msg := string("Wellcome!NewClient!(" + newClient.ip + ")")		
+		//msg := string("Wellcome!NewClient!(" + newClient.ip + ")")
 		newClient.sendToC("0001", "0001", msg)
 
-		go newClient.handleClient()		
+		go newClient.handleClient()
 	}
 }
 
-
-func (c *client)handleClient() {
+func (c *client) handleClient() {
 	newClient(c.id)
 
 	for {
@@ -81,26 +83,26 @@ func (c *client)handleClient() {
 	c.removeClient()
 }
 
-func (c *client)removeClient() {
+func (c *client) removeClient() {
 	c.isConn = false
 	delClient(c.id)
-	fmt.Printf("[Server][removeClient][%v][ip: %s]\n",c.id, c.ip)	
+	fmt.Printf("[Server][removeClient][%v][ip: %s]\n", c.id, c.ip)
 	delete(clients, c.id)
 }
 
-func (c *client)processMsg(buf []byte) {
+func (c *client) processMsg(buf []byte) {
 	idStr := string(bytes.Trim(buf[0:4], "\x00"))
 	systemStr := string(bytes.Trim(buf[4:8], "\x00"))
 	apiStr := string(bytes.Trim(buf[8:12], "\x00"))
 	params := string(bytes.Trim(buf[12:], "\x00"))
 
-	id, _ := strconv.Atoi(idStr) // string >> int
+	id, _ := strconv.Atoi(idStr)      // string >> int
 	sys, _ := strconv.Atoi(systemStr) // string >> int
-	api, _ := strconv.Atoi(apiStr) // string >> int
+	api, _ := strconv.Atoi(apiStr)    // string >> int
 
 	_, ok := clients[id]
 	if !ok {
-		fmt.Printf("[ERROR][SERVER][%v,%v,%v] wrong id!\n",id,sys,api)
+		fmt.Printf("[ERROR][SERVER][%v,%v,%v] wrong id!\n", id, sys, api)
 		return
 	}
 
@@ -108,7 +110,7 @@ func (c *client)processMsg(buf []byte) {
 	case 2:
 		c.setUid(systemStr, apiStr, params)
 	case 3:
-		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params) 
+		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params)
 		BroadcastMessage(-1, sys, api, msg)
 	case 9999:
 		c.sendToC(systemStr, apiStr, params)
@@ -119,31 +121,31 @@ func (c *client)processMsg(buf []byte) {
 	}
 }
 
-func (c *client)setUid(systemId string, apiId string, params string) {
+func (c *client) setUid(systemId string, apiId string, params string) {
 	c.name = params
 	fmt.Printf("[setUid]: %s\n", c.name)
 	msg := fmt.Sprintf("Hello! %s! Set uid finish!", c.name)
 	c.sendToC(systemId, apiId, msg)
 }
 
-func BroadcastMessage(id int,sys int, api int, msg string) {	
-	systemId := fmt.Sprintf("%04d",sys)
-	apiId := fmt.Sprintf("%04d",api)
-	for _, c := range clients {	
+func BroadcastMessage(id int, sys int, api int, msg string) {
+	systemId := fmt.Sprintf("%04d", sys)
+	apiId := fmt.Sprintf("%04d", api)
+	for _, c := range clients {
 		if c.id != id {
 			c.sendToC(systemId, apiId, msg)
 		}
 	}
 }
 
-func SendMsg(id int, sys int, api int, msg string) {	
+func SendMsg(id int, sys int, api int, msg string) {
 	c := clients[id]
-	systemId := fmt.Sprintf("%04d",sys)
-	apiId := fmt.Sprintf("%04d",api)
+	systemId := fmt.Sprintf("%04d", sys)
+	apiId := fmt.Sprintf("%04d", api)
 	c.sendToC(systemId, apiId, msg)
 }
 
-func (c *client)sendToC(systemId string, apiId string, params string) {	
+func (c *client) sendToC(systemId string, apiId string, params string) {
 	msg := fmt.Sprintf("[<]%s%s%s[>]", systemId, apiId, params)
 	buf := []byte(msg)
 	//fmt.Println(msg)
