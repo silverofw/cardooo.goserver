@@ -80,10 +80,32 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		orderStr := strings.Split(msg, ",") // >> id,order
 		order, _ := strconv.Atoi(orderStr[1]) // string >> int
 		mainGame.OnOrder(id, order)
-	case 100://戰報
+	case MainEvent.CSC_BATTLE_REPORT://戰報
 		sendMsg := mainBattle.Report(id)
 		fmt.Println("[BATTLE REPORT]: " + sendMsg)
 		server.SendMsg(id, sys, api, sendMsg)
+	case MainEvent.CSC_BATTLE_UPDATE_TEAM://更新隊伍
+		agentsStr := strings.Split(msg, "|")
+		agents := []game.Agent{}
+		for _,v := range agentsStr {
+			fmt.Printf("[BATTLE] UPATE PLAYER TEAM :%v \n", v)
+			if v== "" {
+				continue
+			}
+			agentStr := strings.Split(v, ",")
+			pixel, _ := strconv.Atoi(agentStr[0])
+			x, _ := strconv.Atoi(agentStr[1])
+			y, _ := strconv.Atoi(agentStr[2])
+
+			xOffset := 2
+			agent := game.Agent{
+				Pixel: pixel, MapId: 0, Hp: 10, Face: 0, 
+				Pos: game.Pos{ X: x + xOffset, Y: y, },
+			}
+			agents = append(agents, agent)
+		}
+		mainBattle.UpdatePlayerTeam(agents)
+		fmt.Printf("[BATTLE] UPATE PLAYER TEAM FINISH\n")
 	default:
 		
 	}

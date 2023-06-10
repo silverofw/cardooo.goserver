@@ -9,6 +9,7 @@ type Battle struct {
 	Uid int
 	reportId int
 
+	playerTeam []game.Agent
 	battleGame game.Game
 }
 type BattleRound struct {
@@ -24,9 +25,17 @@ func InitBattle() Battle {
 	b := Battle{
 		Uid: 1,
 		reportId: 1,
+		playerTeam: []game.Agent{
+			game.Agent{ MapId: 0, Hp: 10, Face: 0, Pixel: 1,
+				Pos: game.Pos{ X: 4, Y: 2, },},
+		},
 	}
 
 	return b
+}
+
+func (b *Battle)UpdatePlayerTeam(agents []game.Agent) {
+	b.playerTeam = agents;
 }
 
 func (b *Battle)Report(playerId int) string{
@@ -35,10 +44,6 @@ func (b *Battle)Report(playerId int) string{
 
 	b.battleGame = game.InitBattleGame()
 
-	var playerTeam = []game.Agent{
-		game.Agent{ MapId: 0, Hp: 10, Face: 0, Pixel: 1,
-			Pos: game.Pos{ X: 3, Y: 2, },},
-	}
 	var mainDungeonEnemys = []game.Agent{
 		game.Agent{ MapId: 0, Hp: 2, Face: 0, Pixel: 2001,
 			Pos: game.Pos{ X: 1, Y: 6, },},
@@ -46,7 +51,7 @@ func (b *Battle)Report(playerId int) string{
 			Pos: game.Pos{ X: 4, Y: 7, },},
 	}
 	tokenId:=10
-	for _,a := range playerTeam {
+	for _,a := range b.playerTeam {
 		a.Id = tokenId
 		tokenId++
 		a.Team = 1

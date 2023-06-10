@@ -18,7 +18,7 @@ type Game struct {
 	StartMapId int
 	MapId int
 	
-	AgentMap map[int]*Agent
+	AgentMap map[int]*Agent	
 
 	SendMsg func(int, int, int, string)
 	SendBroadcastMsg func(int, int, int, string)
