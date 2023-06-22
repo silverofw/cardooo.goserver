@@ -21,6 +21,11 @@ func (a *Agent) AddPos(x int, y int) {
 	a.Pos.Y += y
 }
 
+func (a *Agent) Reverse() {
+	a.Pos.X = 8 - a.Pos.X
+	a.Pos.Y = 8 - a.Pos.Y
+}
+
 func (a *Agent) Behit(damage int) {
 	a.Hp -= damage
 }

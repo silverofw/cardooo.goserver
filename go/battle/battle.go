@@ -10,9 +10,15 @@ type Battle struct {
 	Uid      int
 	reportId int
 
-	playerTeam []model.Agent
 	battleGame game.Game
 }
+
+type BattleInitData struct {
+	PlayerTeam []model.Agent
+	EnemyTeam  []model.Agent
+	EnemyName string
+}
+
 type BattleRound struct {
 	Orders []Order
 }
@@ -26,40 +32,30 @@ func InitBattle() Battle {
 	b := Battle{
 		Uid:      1,
 		reportId: 1,
-		playerTeam: []model.Agent{
-			{ MapId: 0, Hp: 10, Face: 0, Pixel: 1, Pos: model.Vector2{ X: 4, Y: 2, },},
-		},
 	}
 
 	return b
 }
 
-func (b *Battle)UpdatePlayerTeam(agents []model.Agent) {
-	b.playerTeam = agents;
-}
-
-func (b *Battle)Report(playerId int) string{
+func (b *Battle) Report(initData BattleInitData) string {
 	agents := []model.Agent{}
 	rounds := []BattleRound{}
 
 	b.battleGame = game.InitBattleGame()
 
-	var mainDungeonEnemys = []model.Agent{
-		{ MapId: 0, Hp: 2, Face: 0, Pixel: 2001, Pos: model.Vector2{ X: 1, Y: 6, },},
-		{ MapId: 0, Hp: 2, Face: 0, Pixel: 2001, Pos: model.Vector2{ X: 4, Y: 7, },},
-	}
-	tokenId:=10
-	for _,a := range b.playerTeam {
+	tokenId := 10
+	for _, a := range initData.PlayerTeam {
 		a.Id = tokenId
 		tokenId++
 		a.Team = 1
 		b.battleGame.AddNewAgent(a)
 		agents = append(agents, a)
 	}
-	for _, a := range mainDungeonEnemys {
+	for _, a := range initData.EnemyTeam {
 		a.Id = tokenId
 		tokenId++
 		a.Team = 2
+		a.Reverse() // switch offset
 		b.battleGame.AddNewAgent(a)
 		agents = append(agents, a)
 	}
@@ -109,10 +105,15 @@ func (b *Battle)Report(playerId int) string{
 		}
 
 		rounds = append(rounds, r)
+
+		if len(rounds) > 100 {
+			fmt.Printf("[ERROR][BATTLE] round too many!\n")
+			break
+		}
 	}
 
 	sendMsg := ""
-	sendMsg += fmt.Sprintf("%v,%v,%v|", b.reportId, len(agents), len(rounds))
+	sendMsg += fmt.Sprintf("%v,%v,%v,%s|", b.reportId, len(agents), len(rounds), initData.EnemyName)
 	for _, a := range agents {
 		sendMsg += fmt.Sprintf("%v,%v,%v,%v,%v|", a.Id, a.Pixel, a.Hp, a.Pos.X, a.Pos.Y)
 	}

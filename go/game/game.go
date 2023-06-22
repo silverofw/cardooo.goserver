@@ -16,7 +16,7 @@ type Game struct {
 	autoCd     int
 	agentToken int
 	StartMapId int
-	MapId int
+	MapId      int
 
 	AgentMap map[int]*model.Agent
 

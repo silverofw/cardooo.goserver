@@ -1,6 +1,7 @@
 package model
 
 type Item struct {
-	id       int
-	quantity int
+	UID       int
+	Id       int
+	Quantity int
 }

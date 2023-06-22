@@ -2,40 +2,50 @@ package server
 
 import (
 	"bytes"
-	"cardooo/model"
 	"fmt"
 	"net"
 	"strconv"
 )
 
 type client struct {
-	id     int
-	name   string
-	ip     string
-	frame  int
-	conn   net.Conn
-	isConn bool
-
-	Items []model.Item
+	id      int
+	Account int
+	name    string
+	ip      string
+	frame   int
+	conn    net.Conn
+	isConn  bool
 }
 
-var token int = 1000
-var clients map[int]client
-var msgSize int = 1024
-var port string = ":1024"
+type Server struct {
+	token    int
+	Clients  map[int]client
+	msgSize  int
+	port     string
 
-var newClient func(int)
-var delClient func(int)
-var clientCommand func(int, int, int, string)
+	newClient     func(int)
+	delClient     func(int)
+	clientCommand func(int, int, int, string)
+}
 
-func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string)) {
-	newClient = newC
-	delClient = delC
-	clientCommand = clientC
-	clients = make(map[int]client)
+func InitServer(newC func(int), delC func(int), clientC func(int, int, int, string)) Server {
+	s := Server{
+		token:    1000,		
+		msgSize:  1024,
+		port:     ":1024",
+
+		newClient:     newC,
+		delClient:     delC,
+		clientCommand: clientC,
+		Clients:       make(map[int]client),
+	}
+	return s
+}
+
+func (s *Server) StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string)) {
 
 	// 創建 TCP 監聽器，監聽所有網卡上的 1024 端口
-	listener, _ := net.Listen("tcp", port)
+	listener, _ := net.Listen("tcp", s.port)
 
 	for {
 		// 持續監聽客戶端連線
@@ -45,30 +55,30 @@ func StartTCP(newC func(int), delC func(int), clientC func(int, int, int, string
 			continue
 		}
 
-		token++
+		s.token++
 		newClient := client{
-			id:     token,
+			id:     s.token,
 			conn:   conn,
 			ip:     conn.RemoteAddr().String(),
 			frame:  0,
 			name:   "NewClient",
 			isConn: true,
-		}
-		clients[newClient.id] = newClient
+		}		
+		s.Clients[newClient.id] = newClient
 		msg := fmt.Sprintf("[Server][%v]Wellcome!NewClient!(%s)", newClient.id, newClient.ip)
 		fmt.Println(msg)
 		//msg := string("Wellcome!NewClient!(" + newClient.ip + ")")
 		newClient.sendToC("0001", "0001", msg)
 
-		go newClient.handleClient()
+		go newClient.handleClient(s)
 	}
 }
 
-func (c *client) handleClient() {
-	newClient(c.id)
+func (c *client) handleClient(s *Server) {
+	s.newClient(c.id)
 
 	for {
-		buf := make([]byte, msgSize)
+		buf := make([]byte, s.msgSize)
 		_, err := c.conn.Read(buf)
 		if err != nil {
 			fmt.Println("Error reading:", err.Error())
@@ -76,21 +86,28 @@ func (c *client) handleClient() {
 		}
 
 		//fmt.Println("Received message:", msg)
-		c.processMsg(buf)
+		c.processMsg(s, buf)
 	}
 
 	c.conn.Close()
-	c.removeClient()
+	c.removeClient(s)
 }
 
-func (c *client) removeClient() {
+
+func (s *Server) UpdateAccount(id int, account int) {
+	c := s.Clients[id]
+	c.Account = account
+	s.Clients[id] = c	
+}
+
+func (c *client) removeClient(s *Server) {
 	c.isConn = false
-	delClient(c.id)
+	s.delClient(c.id)
 	fmt.Printf("[Server][removeClient][%v][ip: %s]\n", c.id, c.ip)
-	delete(clients, c.id)
+	delete(s.Clients, c.id)
 }
 
-func (c *client) processMsg(buf []byte) {
+func (c *client) processMsg(s *Server, buf []byte) {
 	idStr := string(bytes.Trim(buf[0:4], "\x00"))
 	systemStr := string(bytes.Trim(buf[4:8], "\x00"))
 	apiStr := string(bytes.Trim(buf[8:12], "\x00"))
@@ -100,7 +117,7 @@ func (c *client) processMsg(buf []byte) {
 	sys, _ := strconv.Atoi(systemStr) // string >> int
 	api, _ := strconv.Atoi(apiStr)    // string >> int
 
-	_, ok := clients[id]
+	_, ok := s.Clients[id]
 	if !ok {
 		fmt.Printf("[ERROR][SERVER][%v,%v,%v] wrong id!\n", id, sys, api)
 		return
@@ -111,13 +128,13 @@ func (c *client) processMsg(buf []byte) {
 		c.setUid(systemStr, apiStr, params)
 	case 3:
 		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params)
-		BroadcastMessage(-1, sys, api, msg)
+		s.BroadcastMessage(-1, sys, api, msg)
 	case 9999:
 		c.sendToC(systemStr, apiStr, params)
 	default:
 		// 將客戶端發送的消息回傳給客戶端
 		c.conn.Write(buf)
-		clientCommand(id, sys, api, params)
+		s.clientCommand(id, sys, api, params)
 	}
 }
 
@@ -128,18 +145,18 @@ func (c *client) setUid(systemId string, apiId string, params string) {
 	c.sendToC(systemId, apiId, msg)
 }
 
-func BroadcastMessage(id int, sys int, api int, msg string) {
+func (s *Server) BroadcastMessage(id int, sys int, api int, msg string) {
 	systemId := fmt.Sprintf("%04d", sys)
 	apiId := fmt.Sprintf("%04d", api)
-	for _, c := range clients {
+	for _, c := range s.Clients {
 		if c.id != id {
 			c.sendToC(systemId, apiId, msg)
 		}
 	}
 }
 
-func SendMsg(id int, sys int, api int, msg string) {
-	c := clients[id]
+func (s *Server) SendMsg(id int, sys int, api int, msg string) {
+	c := s.Clients[id]
 	systemId := fmt.Sprintf("%04d", sys)
 	apiId := fmt.Sprintf("%04d", api)
 	c.sendToC(systemId, apiId, msg)
