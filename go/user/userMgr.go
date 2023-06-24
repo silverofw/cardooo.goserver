@@ -55,6 +55,12 @@ func (u *UserMgr) AddItem(account int, addItem model.Item) {
 	u.Users[account] = c
 }
 
+func (u *UserMgr) MainQuestFinish(account int) {
+	c := u.Users[account]
+	c.MainQuest++
+	u.Users[account] = c
+}
+
 func (u *UserMgr) GetRandUser() *model.User{
 	l := len(u.Users)
 	index := rand.Intn(l)

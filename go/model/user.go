@@ -6,6 +6,8 @@ type User struct{
 
 	ServerId int
 
+	MainQuest int
+
 	Items []Item
 	Team []Agent
 }

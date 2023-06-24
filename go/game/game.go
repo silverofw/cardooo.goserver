@@ -18,6 +18,12 @@ type Game struct {
 	StartMapId int
 	MapId      int
 
+	Agents []model.Agent
+	Rounds []model.BattleRound
+
+
+	WinTeam int
+
 	AgentMap map[int]*model.Agent
 
 	SendMsg          func(int, int, int, string)
@@ -43,6 +49,7 @@ func InitBattleGame() Game {
 		autoCd:   3,
 		MapId:    7007,
 		AgentMap: make(map[int]*model.Agent),
+		WinTeam:  -1,
 	}
 	return g
 }
@@ -234,6 +241,7 @@ func CheckCanPass(pos model.Vector2) bool {
 
 func (g *Game) GameEnd() bool {
 	team := -1
+	
 	for _, a := range g.AgentMap {
 		if team == -1 {
 			team = a.Team
@@ -243,6 +251,8 @@ func (g *Game) GameEnd() bool {
 			return false
 		}
 	}
+	//決定勝利隊伍
+	g.WinTeam = team
 
 	return true
 }

@@ -78,8 +78,8 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		mainServer.UpdateAccount(id, account)
 
 		v := mainGame.AgentMap[id]
-		sendMsg := fmt.Sprintf("%v,%v,%v|", id, v.Pos.X, v.Pos.Y)
 		u := userMgr.Users[mainServer.Clients[id].Account]
+		sendMsg := fmt.Sprintf("%v,%v,%v,%v|", id, u.MainQuest, v.Pos.X, v.Pos.Y)
 		for _, v := range u.Items {
 			sendMsg += fmt.Sprintf("%v,%v,%v=", v.UID, v.Id, v.Quantity)
 		}
@@ -117,17 +117,25 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		case 0:
 			fmt.Printf("[BATTLE REPORT] start normal battle!\n")
 			initData.EnemyTeam = []model.Agent{
-				{MapId: 0, Hp: 2, Face: 0, Pixel: 2001, Pos: model.Vector2{X: 1, Y: 2}},
-				{MapId: 0, Hp: 2, Face: 0, Pixel: 2001, Pos: model.Vector2{X: 4, Y: 1}},
+				{MapId: 0, Hp: 2 + u.MainQuest*10, Face: 0, Pixel: 2001, Pos: model.Vector2{X: 1, Y: 2}},
+				{MapId: 0, Hp: 2 + u.MainQuest*10, Face: 0, Pixel: 2001, Pos: model.Vector2{X: 4, Y: 1}},
 			}
-			initData.EnemyName = "NORMAL_0001"
+			initData.EnemyName = fmt.Sprintf("MAIN %v", u.MainQuest)
 		case 1:
 			enemyU := userMgr.GetRandUser()
 			fmt.Printf("[BATTLE REPORT][%v] start pvp battle!\n", enemyU.Account)
 			initData.EnemyTeam = enemyU.Team
 			initData.EnemyName = fmt.Sprintf("%v", enemyU.Account)
 		}
-		sendMsg := mainBattle.Report(initData)
+		g := mainBattle.GetGame(initData)
+		fmt.Printf("[BATTLE REPORT] team %v win!\n", g.WinTeam)
+		//『ＴＯＤＯ』主線推進邏輯
+		if g.WinTeam == 0 {
+			u.MainQuest++
+			userMgr.MainQuestFinish(mainServer.Clients[id].Account)
+			fmt.Printf("[MAIN QQUEST] main quest %v clear!\n", u.MainQuest)
+		}
+		sendMsg := mainBattle.Report(initData, g)
 		fmt.Println("[BATTLE REPORT]: " + sendMsg)
 		mainServer.SendMsg(id, sys, api, sendMsg)
 	case MainEvent.CSC_BATTLE_UPDATE_TEAM: //更新隊伍
