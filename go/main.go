@@ -20,6 +20,7 @@ var mainGame game.Game
 var mainBattle battle.Battle
 
 func main() {
+	fmt.Println("[BMC][1.00] Server Start...")
 	userMgr = user.InitUserMgr()
 	mainServer = server.InitServer(AddNewAgent, RemoveAgent, ClientCommand)
 	mainGame = game.InitLobyGame(mainServer.SendMsg, mainServer.BroadcastMessage)
@@ -27,7 +28,7 @@ func main() {
 	mainServer.StartTCP(AddNewAgent, RemoveAgent, ClientCommand)
 	mainBattle = battle.InitBattle()
 
-	fmt.Println("[Cardooo] Server Start...")
+	fmt.Println("[BMC] Server Start...")
 	for {
 		time.Sleep(1000 * 1000 * 1000)
 	}
@@ -44,7 +45,7 @@ func RemoveAgent(id int) {
 }
 
 func ServerCommand(id int, sys int, api int, msg string) {
-	fmt.Printf("[Cardooo][ServerCommand] %v,%v,%v,%s\n", id, sys, api, msg)
+	fmt.Printf("[BMC][ServerCommand] %v,%v,%v,%s\n", id, sys, api, msg)
 
 	switch api {
 	case 1001: // [S>C] 玩家登場
@@ -64,7 +65,7 @@ func ServerCommand(id int, sys int, api int, msg string) {
 }
 
 func ClientCommand(id int, sys int, api int, msg string) {
-	fmt.Printf("[Cardooo][ClientCommand] %v,%v,%v,%s\n", id, sys, api, msg)
+	fmt.Printf("[BMC][ClientCommand] %v,%v,%v,%s\n", id, sys, api, msg)
 
 	switch api {
 	case MainEvent.CSC_SERVER_STATE: //取得server狀態
@@ -173,6 +174,9 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		}
 		mainServer.SendMsg(id, sys, MainEvent.CSC_GACHA, sendMsg)
 		mainServer.SendMsg(id, sys, MainEvent.SC_BOX_GET_ITEM, sendMsg)
+	case MainEvent.CSC_SUMMON_CHESS:
+		fmt.Printf("[CSC_SUMMON_CHESS] %v\n", msg)
+		mainServer.BroadcastMessage(-1, sys, api, msg)
 	default:
 
 	}

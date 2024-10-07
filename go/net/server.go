@@ -18,10 +18,10 @@ type client struct {
 }
 
 type Server struct {
-	token    int
-	Clients  map[int]client
-	msgSize  int
-	port     string
+	token   int
+	Clients map[int]client
+	msgSize int
+	port    string
 
 	newClient     func(int)
 	delClient     func(int)
@@ -30,9 +30,9 @@ type Server struct {
 
 func InitServer(newC func(int), delC func(int), clientC func(int, int, int, string)) Server {
 	s := Server{
-		token:    1000,		
-		msgSize:  1024,
-		port:     ":1024",
+		token:   1000,
+		msgSize: 1024,
+		port:    ":1024",
 
 		newClient:     newC,
 		delClient:     delC,
@@ -63,7 +63,7 @@ func (s *Server) StartTCP(newC func(int), delC func(int), clientC func(int, int,
 			frame:  0,
 			name:   "NewClient",
 			isConn: true,
-		}		
+		}
 		s.Clients[newClient.id] = newClient
 		msg := fmt.Sprintf("[Server][%v]Wellcome!NewClient!(%s)", newClient.id, newClient.ip)
 		fmt.Println(msg)
@@ -93,11 +93,10 @@ func (c *client) handleClient(s *Server) {
 	c.removeClient(s)
 }
 
-
 func (s *Server) UpdateAccount(id int, account int) {
 	c := s.Clients[id]
 	c.Account = account
-	s.Clients[id] = c	
+	s.Clients[id] = c
 }
 
 func (c *client) removeClient(s *Server) {
@@ -128,6 +127,7 @@ func (c *client) processMsg(s *Server, buf []byte) {
 		c.setUid(systemStr, apiStr, params)
 	case 3:
 		msg := fmt.Sprintf("[%v] %s: %v", c.id, c.name, params)
+		fmt.Printf("[api:3] %v\n", msg)
 		s.BroadcastMessage(-1, sys, api, msg)
 	case 9999:
 		c.sendToC(systemStr, apiStr, params)
