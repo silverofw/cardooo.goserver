@@ -17,17 +17,9 @@ public class GoServerTest : MonoBehaviour
 
     void Start()
     {
-        if (!nonThread)
-        {
-            GoServerHandler.Inst.JoinServer(serverIp, serverPort, errorLog);
-        }
-        else
-        {
-            GoServerHandler.Inst.JoinServerNonThread(serverIp, serverPort, errorLog);
-        }
-        ApiHandler.Inst.addApi(1, new ApiEndpointLog());
-        ApiHandler.Inst.addApi(2, new ApiEndpointLog());
-        ApiHandler.Inst.addApi(3, new ApiEndpointBoardcast());
+        ApiHandler.Inst.addApi(1, new ApiLog());
+        ApiHandler.Inst.addApi(2, new ApiLog());
+        ApiHandler.Inst.addApi(3, new ApiBoardcast());
     }
 
     void errorLog(string error)
@@ -43,6 +35,19 @@ public class GoServerTest : MonoBehaviour
         });
     }
 
+    [ContextMenu("connServer")]
+    void connServer()
+    {
+        if (!nonThread)
+        {
+            GoServerHandler.Inst.JoinServer(serverIp, serverPort, errorLog);
+        }
+        else
+        {
+            GoServerHandler.Inst.JoinServerNonThread(serverIp, serverPort, errorLog);
+        }
+    }
+
     [ContextMenu("sendMsg")]
     void sendMsg()
     {
@@ -56,8 +61,14 @@ public class GoServerTest : MonoBehaviour
         Debug.Log("Sent: " + msg);
     }
 
+    [ContextMenu("leaveServer")]
+    void leaveServer() 
+    { 
+        GoServerHandler.Inst.LeaveServer();
+    }
+
     private void OnDestroy()
     {
-        GoServerHandler.Inst.LeaveServer();
+        leaveServer();
     }
 }

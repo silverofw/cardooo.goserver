@@ -7,17 +7,17 @@ import (
 )
 
 type UserMgr struct {
-	Users map[int]model.User
+	Users map[int]*model.User
 
 	UIDToken int
 }
 
-func InitUserMgr() UserMgr {
+func InitUserMgr() *UserMgr {
 	mgr := UserMgr{
-		Users:    make(map[int]model.User),
+		Users:    make(map[int]*model.User),
 		UIDToken: 1000,
 	}
-	return mgr
+	return &mgr
 }
 
 func (u *UserMgr) UserLogin(account int, passward string, serverId int) {
@@ -39,7 +39,7 @@ func (u *UserMgr) UserLogin(account int, passward string, serverId int) {
 			},
 		}
 		u.UIDToken++
-		u.Users[account] = newU
+		u.Users[account] = &newU
 	}
 }
 
@@ -61,13 +61,13 @@ func (u *UserMgr) MainQuestFinish(account int) {
 	u.Users[account] = c
 }
 
-func (u *UserMgr) GetRandUser() *model.User{
+func (u *UserMgr) GetRandUser() *model.User {
 	l := len(u.Users)
 	index := rand.Intn(l)
 	i := 0
-	for _,v := range u.Users{
+	for _, v := range u.Users {
 		if i == index {
-			return &v
+			return v
 		}
 		i++
 	}

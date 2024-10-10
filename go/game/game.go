@@ -4,6 +4,7 @@ import (
 	MainEvent "cardooo/enum"
 	"cardooo/model"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -20,7 +21,6 @@ type Game struct {
 
 	Agents []model.Agent
 	Rounds []model.BattleRound
-
 
 	WinTeam int
 
@@ -78,10 +78,9 @@ func (g *Game) LobyMode() {
 		g.frame = g.frame + 1
 		var hour int = g.frame / 60 / 60
 		var minute int = g.frame / 60 % 60
-		var secend int = g.frame % 60 % 60
+		var secend int = g.frame % 60
 		if secend == 0 {
-			dt = time.Now()
-			fmt.Printf("[Game][%v][%v:%v:%v]%s\n", g.frame, hour, minute, secend, dt.String())
+			log.Printf("[Game][%v][%v:%v:%v]\n", g.frame, hour, minute, secend)
 		}
 
 		g.AutoAgentCreator()
@@ -89,7 +88,8 @@ func (g *Game) LobyMode() {
 			v.Frame++
 		}
 
-		time.Sleep(1000 * 1000 * 1000)
+		// 等待一秒
+		time.Sleep(time.Second)
 	}
 }
 func (g *Game) AutoAgentCreator() {
@@ -241,7 +241,7 @@ func CheckCanPass(pos model.Vector2) bool {
 
 func (g *Game) GameEnd() bool {
 	team := -1
-	
+
 	for _, a := range g.AgentMap {
 		if team == -1 {
 			team = a.Team

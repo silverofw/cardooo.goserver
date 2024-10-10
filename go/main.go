@@ -2,36 +2,38 @@ package main
 
 import (
 	"cardooo/battle"
+	"cardooo/battleRoomMgr"
+	"cardooo/common"
 	MainEvent "cardooo/enum"
 	"cardooo/game"
 	"cardooo/model"
-	server "cardooo/net"
+	"cardooo/server"
 	"cardooo/user"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 )
 
-var userMgr user.UserMgr
-var mainServer server.Server
+var userMgr *user.UserMgr
+var mainServer *server.Server
 var mainGame game.Game
 var mainBattle battle.Battle
+var mainBattleRoomMgr *battleRoomMgr.BattleRoomMgr
 
 func main() {
 	fmt.Println("[BMC][1.00] Server Start...")
+	// 初始化 User Manager
 	userMgr = user.InitUserMgr()
 	mainServer = server.InitServer(AddNewAgent, RemoveAgent, ClientCommand)
 	mainGame = game.InitLobyGame(mainServer.SendMsg, mainServer.BroadcastMessage)
+	mainBattleRoomMgr = battleRoomMgr.NewBattleRoomMgr()
 
-	mainServer.StartTCP(AddNewAgent, RemoveAgent, ClientCommand)
+	mainServer.StartTCP()
 	mainBattle = battle.InitBattle()
 
-	fmt.Println("[BMC] Server Start...")
-	for {
-		time.Sleep(1000 * 1000 * 1000)
-	}
+	log.Println("[BMC] Server Started Successfully.")
 }
 
 func AddNewAgent(id int) {
@@ -39,9 +41,10 @@ func AddNewAgent(id int) {
 	ClientCommand(id, 1, MainEvent.CSC_SERVER_STATE, "")
 }
 
-func RemoveAgent(id int) {
-	ServerCommand(id, 1, 1002, "")
-	mainGame.RemoveAgent(id)
+func RemoveAgent(c *common.Client) {
+	ServerCommand(c.Id, 1, 1002, "")
+	mainGame.RemoveAgent(c.Id)
+	mainBattleRoomMgr.LeaveRoom(c)
 }
 
 func ServerCommand(id int, sys int, api int, msg string) {
@@ -176,7 +179,11 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		mainServer.SendMsg(id, sys, MainEvent.SC_BOX_GET_ITEM, sendMsg)
 	case MainEvent.CSC_SUMMON_CHESS:
 		fmt.Printf("[CSC_SUMMON_CHESS] %v\n", msg)
-		mainServer.BroadcastMessage(-1, sys, api, msg)
+		targetTick := mainBattleRoomMgr.Rooms[1000].Tick + 60
+		mainServer.BroadcastMessage(-1, sys, api, fmt.Sprintf("%v,%v", msg, targetTick))
+	case MainEvent.CSC_ENTER_ROOM:
+		var room = mainBattleRoomMgr.EnterRoom(mainServer.Clients[id])
+		mainServer.Clients[id].SendToClient(sys, api, fmt.Sprintf("[CSC_ENTER_ROOM][%v]", room.Id))
 	default:
 
 	}
