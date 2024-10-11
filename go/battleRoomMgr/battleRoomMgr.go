@@ -33,22 +33,30 @@ func NewBattleRoomMgr() *BattleRoomMgr {
 }
 
 func (mgr *BattleRoomMgr) EnterRoom(player *common.Client) *BattleRoom {
-	log.Println("[EnterRoom]")
+	log.Printf("[EnterRoom][%v]", player.Id)
 	var room, exit = mgr.Rooms[DefaultRoomID]
 	if !exit {
 		room = mgr.CreateNewRoom()
 	}
 
+	if room.player1 == player || room.player2 == player {
+		log.Printf("[EnterRoom] already in room")
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("1,%v", room.Id))
+		return room
+	}
+
 	if room.player1 == nil {
 		log.Printf("[EnterRoom][%v enter room %v] player 1 ", player.Id, DefaultRoomID)
 		room.player1 = player
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v", room.Id))
 	} else if room.player2 == nil {
 		log.Printf("[EnterRoom][%v enter room %v] player 2 ", player.Id, DefaultRoomID)
 		room.player2 = player
-		//room.player1.SendToClient(1, MainEvent.CSC_JOIN_ROOM, fmt.Sprintf("%v", player.Id))
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v", room.Id))
 	} else {
 		// 房間已滿，可以處理相應的邏輯，例如返回錯誤或創建新房間
 		log.Println("[EnterRoom] 房間已滿，無法加入新的玩家")
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("-1,%v", room.Id))
 	}
 
 	if room.player1 != nil && room.player2 != nil {

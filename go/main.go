@@ -182,8 +182,9 @@ func ClientCommand(id int, sys int, api int, msg string) {
 		targetTick := mainBattleRoomMgr.Rooms[1000].Tick + 60
 		mainServer.BroadcastMessage(-1, sys, api, fmt.Sprintf("%v,%v", msg, targetTick))
 	case MainEvent.CSC_ENTER_ROOM:
-		var room = mainBattleRoomMgr.EnterRoom(mainServer.Clients[id])
-		mainServer.Clients[id].SendToClient(sys, api, fmt.Sprintf("[CSC_ENTER_ROOM][%v]", room.Id))
+		mainBattleRoomMgr.EnterRoom(mainServer.Clients[id])
+	case MainEvent.CSC_LEAVE_ROOM:
+		mainBattleRoomMgr.LeaveRoom(mainServer.Clients[id])
 	default:
 
 	}
