@@ -45,14 +45,16 @@ func (mgr *BattleRoomMgr) EnterRoom(player *common.Client) *BattleRoom {
 		return room
 	}
 
+	var team = 1
 	if room.player1 == nil {
 		log.Printf("[EnterRoom][%v enter room %v] player 1 ", player.Id, DefaultRoomID)
 		room.player1 = player
-		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v", room.Id))
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v,%v", room.Id, team))
 	} else if room.player2 == nil {
 		log.Printf("[EnterRoom][%v enter room %v] player 2 ", player.Id, DefaultRoomID)
 		room.player2 = player
-		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v", room.Id))
+		team = 2
+		player.SendToClient(1, MainEvent.CSC_ENTER_ROOM, fmt.Sprintf("0,%v,%v", room.Id, team))
 	} else {
 		// 房間已滿，可以處理相應的邏輯，例如返回錯誤或創建新房間
 		log.Println("[EnterRoom] 房間已滿，無法加入新的玩家")
